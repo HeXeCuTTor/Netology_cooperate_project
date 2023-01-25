@@ -74,44 +74,53 @@ class VK:
         self.age_to = age_to
         self.city_id = get_city
         url = 'https://api.vk.com/method/users.search'
-        params_1 = {'sex':self.sex, 'count': 10, 'fields': ['bdate'], 'city_id':self.city_id,'has_photo': 1, 'status': 1, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
+        params_1 = {'sex':self.sex, 'count': 100, 'fields': ['city'], 'city_id':self.city_id,'has_photo': 1, 'status': 1, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
         response_1 = requests.get(url, params={**self.params, **params_1}).json()
-        params_6 = {'sex':self.sex, 'count': 10, 'fields': ['city','bdate'], 'city_id':self.city_id,'has_photo': 1, 'status': 6, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
+        params_6 = {'sex':self.sex, 'count': 100, 'fields': ['city'], 'city_id':self.city_id,'has_photo': 1, 'status': 6, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
         response_6 = requests.get(url, params={**self.params, **params_6}).json()
-        def free_profile(response):
+        # pprint(response_6)
+        def free_profile(response, city = self.city_id):
             users_data = {}
             users_dates = []
             for item in response.values():
                 for keys,values in item.items():
                     if keys == 'items':
                         for list in values:
+                            fatal = 0
+                            apps = 0
+                            push = 0
                             for key, value in list.items():
-                                if key == 'bdate':
-                                    birthday = value
                                 if key == 'first_name':
                                     name = value
+                                    users_data['first_name'] = name
+                                    apps += 1
                                 if key == 'id':
                                     user_id = value
+                                    users_data['user_id'] = user_id
+                                    apps += 1
                                 if key == 'last_name':
                                     surname = value
+                                    users_data['last_name'] = surname
+                                    apps += 1
                                 if key == 'can_access_closed':
                                     if value == False:
-                                        continue
-                                    else:
-                                        users_data['first_name'] = name
-                                        users_data['last_name'] = surname
-                                        users_data['bdate'] = birthday
-                                        users_data['user_id'] = user_id
-                                        photos = vk.users_get_photo(user_id)
-                                        num = 0                                    
-                                        if photos != []:
-                                            for photo in photos:
-                                                for keys, values in photo.items():
-                                                    if keys == 'photo_id':
-                                                        num += 1
-                                                        users_data[f'{keys} {num}'] = values
-                                            users_dates.append(users_data)
-                                            users_data = {}
+                                        fatal = 1
+                                if key == 'city':
+                                    for index, info in value.items():
+                                        if index == 'id' and info != city:
+                                            fatal = 1
+                                if fatal == 0 and apps == 3 and push == 0:
+                                    photos = vk.users_get_photo(user_id)
+                                    num = 0                                    
+                                    if photos != []:
+                                        for photo in photos:
+                                            for keys, values in photo.items():
+                                                if keys == 'photo_id':
+                                                    num += 1
+                                                    users_data[f'{keys} {num}'] = values
+                                        users_dates.append(users_data)
+                                        users_data = {}
+                                        push += 1
             return users_dates
         with open ('database.json', 'w', encoding = 'utf8') as f:
             json.dump(free_profile(response_1) + free_profile(response_6), f, sort_keys=False, ensure_ascii = False, indent = 2)
@@ -120,12 +129,12 @@ class VK:
 
 if __name__ == '__main__':
     country = "Россия"
-    region = "Новосибирская область"
-    city = "Новосибирск"
+    region = "Краснодарский край"
+    city = "Краснодар"
     sex = '1'
     age_from = '18'
     age_to = '30'
     vk = VK(token_VK)
     get_country = vk.get_id_countries(country)
     get_city = vk.get_id_city(get_country, region, city)
-    get_search_free = pprint(vk.users_get_free(sex, age_from, age_to, get_city))
+    get_search_free = vk.users_get_free(sex, age_from, age_to, get_city)
