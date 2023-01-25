@@ -78,7 +78,6 @@ class VK:
         response_1 = requests.get(url, params={**self.params, **params_1}).json()
         params_6 = {'sex':self.sex, 'count': 100, 'fields': ['city'], 'city_id':self.city_id,'has_photo': 1, 'status': 6, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
         response_6 = requests.get(url, params={**self.params, **params_6}).json()
-        # pprint(response_6)
         def free_profile(response, city = self.city_id):
             users_data = {}
             users_dates = []
