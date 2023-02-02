@@ -1,7 +1,6 @@
 import requests
 import json
-from pprint import pprint
-from config import token_VK
+
 
 class VK:
     def __init__(self, token_VK,version='5.131'):
@@ -26,24 +25,31 @@ class VK:
                     for keys,values in values[0].items():
                         if keys == 'id':
                             id = values
-        return id
+                            return id
 
     def get_id_city(self, get_country, region, city):
         self.region = region
         self.city = city
         self.country_id = get_country
-        url = 'https://api.vk.com/method/database.getCities'
-        params = {'country_id': self.country_id, 'q':self.city, 'need_all': 1}
-        response = requests.get(url, params={**self.params, **params}).json()
-        for item in response.values():
-            for keys,values in item.items():
-                if keys == 'items':
-                    for diction in values:
-                        for keys,value in diction.items():
-                            if keys == 'id':
-                                city_id = value
-                            if value == self.region:
-                                return city_id
+        if self.city == "Москва":
+            return '1'
+        elif self.city == "Санкт-Петербург":
+            return '2' 
+        elif self.city == "Севастополь":
+            return '185'
+        else:
+            url = 'https://api.vk.com/method/database.getCities'
+            params = {'country_id': self.country_id, 'q':self.city, 'need_all': 1}
+            response = requests.get(url, params={**self.params, **params}).json()
+            for item in response.values():
+                for keys,values in item.items():
+                    if keys == 'items':
+                        for diction in values:
+                            for keys,value in diction.items():
+                                if keys == 'id':
+                                    city_id = value
+                                if value == self.region:
+                                    return city_id
                                 
     def users_get_photo(self,user_id):
         url = 'https://api.vk.com/method/photos.get'
@@ -69,14 +75,17 @@ class VK:
         return sorted_photos_json
 
     def users_get_free(self, sex, age_from, age_to, get_city):
-        self.sex = sex
+        if sex == 'М':
+            self.sex = 2
+        else:
+            self.sex = 1
         self.age_from = age_from
         self.age_to = age_to
         self.city_id = get_city
         url = 'https://api.vk.com/method/users.search'
-        params_1 = {'sex':self.sex, 'count': 100, 'fields': ['city'], 'city_id':self.city_id,'has_photo': 1, 'status': 1, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
+        params_1 = {'sex':self.sex, 'count': 500, 'fields': ['city'], 'city_id':self.city_id,'has_photo': 1, 'status': 1, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
         response_1 = requests.get(url, params={**self.params, **params_1}).json()
-        params_6 = {'sex':self.sex, 'count': 100, 'fields': ['city'], 'city_id':self.city_id,'has_photo': 1, 'status': 6, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
+        params_6 = {'sex':self.sex, 'count': 500, 'fields': ['city'], 'city_id':self.city_id,'has_photo': 1, 'status': 6, 'age_from': self.age_from, "age_to": self.age_to, 'can_access_closed': 1}
         response_6 = requests.get(url, params={**self.params, **params_6}).json()
         def free_profile(response, city = self.city_id):
             users_data = {}
@@ -109,7 +118,7 @@ class VK:
                                         if index == 'id' and info != city:
                                             fatal = 1
                                 if fatal == 0 and apps == 3 and push == 0:
-                                    photos = vk.users_get_photo(user_id)
+                                    photos = self.users_get_photo(user_id)
                                     num = 0                                    
                                     if photos != []:
                                         for photo in photos:
@@ -124,16 +133,3 @@ class VK:
         with open ('database.json', 'w', encoding = 'utf8') as f:
             json.dump(free_profile(response_1) + free_profile(response_6), f, sort_keys=False, ensure_ascii = False, indent = 2)
         return print("Done")
-    
-
-if __name__ == '__main__':
-    country = "Россия"
-    region = "Краснодарский край"
-    city = "Краснодар"
-    sex = '1'
-    age_from = '18'
-    age_to = '30'
-    vk = VK(token_VK)
-    get_country = vk.get_id_countries(country)
-    get_city = vk.get_id_city(get_country, region, city)
-    get_search_free = vk.users_get_free(sex, age_from, age_to, get_city)
