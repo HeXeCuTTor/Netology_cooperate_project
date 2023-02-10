@@ -1,63 +1,46 @@
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
-from models import create_tables, User, Photos, UserPhoto
-import json
+from models import create_tables, User, Photos, UserPhoto, Parameters
 import psycopg2
 from config import login, password, db_name
 
 
 DSN = f'postgresql://{login}:{password}@localhost:5432/{db_name}'
 engine = sqlalchemy.create_engine(DSN)
+create_tables(engine)
 
 Session = sessionmaker(bind=engine)
 session = Session()
 
 
-def fill_DB():
-    create_tables(engine)
-    with open('database.json', 'r', encoding='utf8') as f:
-        data = json.load(f)
+# Заполнение таблицы Parameters
+def fill_params(country, region, city, sex, age_from, age_to):
+    params_line = Parameters(country=country, region=region, city=city, sex=sex, age_from=age_from, age_to=age_to)
+    session.add(params_line)
+    session.commit()
+    id_search = params_line.search_id
+    return id_search
 
-    for record in data:
-        first_name = record['first_name']
-        last_name = record['last_name']
-        profile_link = f"https://vk.com/id{record['user_id']}"
-        user1 = User(first_name=first_name, last_name=last_name, profile_link=profile_link)
-        session.add(user1)
-        session.commit()
-        id_u = user1.user_id
 
-        if 'photo_id 1' in record:
-            photo1 = Photos(photo=f"photo{record['user_id']}_{record['photo_id 1']}")
-            session.add(photo1)
-            session.commit()
-            id_f1 = photo1.photo_id
+# Заполнение таблицы User
+def fill_user_info(first_name, last_name, profile_link, search_id):
+    user1 = User(first_name=first_name, last_name=last_name, profile_link=profile_link, search_id=search_id)
+    session.add(user1)
+    session.commit()
+    id_u = user1.user_id
+    return id_u
 
-            userphoto1 = UserPhoto(user_id=id_u, photo_id=id_f1)
-            session.add(userphoto1)
-            session.commit()
 
-        if 'photo_id 2' in record:
-            photo2 = Photos(photo=f"photo{record['user_id']}_{record['photo_id 2']}")
-            session.add(photo2)
-            session.commit()
-            id_f2 = photo2.photo_id
+# Заполнение таблиц Photos и UserPhoto
+def fill_photo_info(photo, id_u):
+    photo1 = Photos(photo=photo)
+    session.add(photo1)
+    session.commit()
+    id_f1 = photo1.photo_id
 
-            userphoto1 = UserPhoto(user_id=id_u, photo_id=id_f2)
-            session.add(userphoto1)
-            session.commit()
-
-        if 'photo_id 3' in record:
-            photo3 = Photos(photo=f"photo{record['user_id']}_{record['photo_id 3']}")
-            session.add(photo3)
-            session.commit()
-            id_f3 = photo3.photo_id
-
-            userphoto1 = UserPhoto(user_id=id_u, photo_id=id_f3)
-            session.add(userphoto1)
-            session.commit()
-    print('БД заполнена')
-
+    userphoto1 = UserPhoto(user_id=id_u, photo_id=id_f1)
+    session.add(userphoto1)
+    session.commit()
 
 
 session.close()
@@ -75,32 +58,12 @@ def add_to_selected(user_id):
 
 
 # Вывести список избранных
-def print_selected_list():
+def print_selected_list(search_id):
     with conn.cursor() as cur:
         cur.execute('''
-            SELECT first_name, last_name, profile_link FROM "user" WHERE selected = %s;
-            ''', (True,))
+            SELECT u.first_name, u.last_name, u.profile_link FROM "user" u
+            JOIN "parameters" p ON u.search_id=p.search_id
+            WHERE selected = %s AND p.search_id = %s;
+            ''', (True, search_id))
         us_list = cur.fetchall()
         return us_list
-
-
-# Вывести фотки из БД
-def print_photos(profile_link):
-    with conn.cursor() as cur:
-        cur.execute('''
-            SELECT f.photo FROM "photos" f 
-            JOIN "userphoto" up ON f.photo_id=up.photo_id
-            JOIN "user" u ON up.user_id=u.user_id
-            WHERE u.profile_link = %s;
-            ''', (profile_link,))
-        f_list = cur.fetchall()
-        return f_list
-
-
-# Вывод людей из БД
-def print_man(man_id):
-    with conn.cursor() as cur:
-        cur.execute('''
-            SELECT first_name, last_name, profile_link FROM "user" WHERE user_id = %s;
-            ''', (man_id,))
-        return cur.fetchone()
